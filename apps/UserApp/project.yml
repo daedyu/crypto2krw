@@ -1,0 +1,29 @@
+name: UserApp
+options:
+  bundleIdPrefix: com.crypto2krw
+  deploymentTarget:
+    iOS: "26.0"
+  xcodeVersion: "16"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    DEVELOPMENT_TEAM: ""
+
+targets:
+  UserApp:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: UserApp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.crypto2krw.userapp
+        INFOPLIST_FILE: UserApp/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SWIFT_EMIT_LOC_STRINGS: true
