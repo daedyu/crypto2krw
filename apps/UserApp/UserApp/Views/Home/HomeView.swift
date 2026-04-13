@@ -8,8 +8,9 @@ struct HomeView: View {
     @State private var qrToken  = ""
     @State private var timeLeft = 30
     @State private var dragOffset: CGFloat = 0
+    @State private var motion = MotionManager()
 
-    private let balances     = MockData.balances
+    private let balances    = MockData.balances
     private let cardGap: CGFloat  = 100   // 카드 간격 (넉넉하게)
     private let headerH: CGFloat  = 110   // 헤더 영역 높이
     private let selectedY: CGFloat = 24   // 선택 시 카드 상단 위치
@@ -39,7 +40,8 @@ struct HomeView: View {
 
                 // ── 카드 스택 ──
                 ForEach(Array(balances.enumerated()), id: \.element.id) { i, balance in
-                    WalletCard(balance: balance, width: cardW, height: cardH, isSelected: selectedIndex == i)
+                    WalletCard(balance: balance, width: cardW, height: cardH, isSelected: selectedIndex == i,
+                               roll: motion.roll, pitch: motion.pitch)
                         .offset(x: 24, y: yOffset(i: i, cardH: cardH, totalH: geo.size.height) + (selectedIndex == i ? dragOffset : 0))
                         .zIndex(selectedIndex == i ? 100 : Double(i))
                         .onTapGesture {
@@ -100,6 +102,8 @@ struct HomeView: View {
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear  { motion.start() }
+        .onDisappear { motion.stop() }
         .simultaneousGesture(
             DragGesture(minimumDistance: 10)
                 .onChanged { value in
@@ -157,21 +161,31 @@ struct WalletCard: View {
     let balance:    CoinBalance
     let width:      CGFloat
     let height:     CGFloat
-    var isSelected: Bool = false
+    var isSelected: Bool   = false
+    var roll:       Double = 0
+    var pitch:      Double = 0
+
+    // 기울기 → 하이라이트 UnitPoint (중앙 기준, ±0.5 범위로 클램프)
+    private var highlightCenter: UnitPoint {
+        let sensitivity = 0.45
+        let x = (0.25 - roll  * sensitivity).clamped(to: 0...1)
+        let y = (0.25 + pitch * sensitivity).clamped(to: 0...1)
+        return UnitPoint(x: x, y: y)
+    }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(balance.currency.cardGradient)
 
-            // 미묘한 하이라이트
+            // 기울기 반응 하이라이트
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(
                     RadialGradient(
-                        colors: [.white.opacity(0.07), .clear],
-                        center: .topLeading,
+                        colors: [.white.opacity(0.18), .clear],
+                        center: highlightCenter,
                         startRadius: 0,
-                        endRadius: width * 0.65
+                        endRadius: width * 0.75
                     )
                 )
 

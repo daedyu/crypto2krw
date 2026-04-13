@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		05D9CB1477D89EC8DB2D3D19 /* CoreMotion.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39E0D9C97D8E5268A6451B11 /* CoreMotion.framework */; };
 		13962D41577A2EDA24CB0728 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80DBA5609C42AE7B00270C18 /* AuthManager.swift */; };
 		16C7E201A1C36F2CC31C68E2 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B33BDD685153AFCC766EC87 /* LoginView.swift */; };
 		1AE3481E4193FC6C5E0FD873 /* DepositListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 758F891232C4316087581655 /* DepositListView.swift */; };
@@ -14,6 +15,7 @@
 		3195896E787DAE407A6DEDF2 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F714AF7333D6C533FFCF985A /* HomeView.swift */; };
 		43A5EA4CD6CB3F203CCC1172 /* DepositDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDB71C7A158B386352C2A537 /* DepositDetailView.swift */; };
 		54EB6F724DFCE98BD70796AC /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E02D78815A7D019469DA831 /* HistoryView.swift */; };
+		8360FE843EB4963C47B0244C /* MotionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 171A2B0A44CEA5CFE60932E7 /* MotionManager.swift */; };
 		9842514136DCD4088BB3E8C4 /* CoinCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B0F1454CE94A0037501A58F /* CoinCard.swift */; };
 		9C2C3C340BBBD7960C3649AF /* MockData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2292C316D260842145B70441 /* MockData.swift */; };
 		A721987EC6A16727FF745799 /* UserAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B02C17E9DD6686FD3F93524 /* UserAppApp.swift */; };
@@ -30,8 +32,10 @@
 		0B0F1454CE94A0037501A58F /* CoinCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoinCard.swift; sourceTree = "<group>"; };
 		0B33BDD685153AFCC766EC87 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		1171C9976236FA69B3297B43 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		171A2B0A44CEA5CFE60932E7 /* MotionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionManager.swift; sourceTree = "<group>"; };
 		2292C316D260842145B70441 /* MockData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockData.swift; sourceTree = "<group>"; };
 		31C1342A0C55D2F42F574885 /* RegisterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterView.swift; sourceTree = "<group>"; };
+		39E0D9C97D8E5268A6451B11 /* CoreMotion.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMotion.framework; path = System/Library/Frameworks/CoreMotion.framework; sourceTree = SDKROOT; };
 		62B70C985FB381AF9558F142 /* UserApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UserApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6B02C17E9DD6686FD3F93524 /* UserAppApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserAppApp.swift; sourceTree = "<group>"; };
 		73FFBEE6472D70583C30C09E /* TransactionRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionRow.swift; sourceTree = "<group>"; };
@@ -48,6 +52,17 @@
 		FE155D30F042253862639A20 /* QRPayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRPayView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFrameworksBuildPhase section */
+		42D83EC47B7C04A2979C6DF1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				05D9CB1477D89EC8DB2D3D19 /* CoreMotion.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXGroup section */
 		1956ED1ECC1BE73D762113F4 /* QRPay */ = {
 			isa = PBXGroup;
@@ -61,6 +76,7 @@
 			isa = PBXGroup;
 			children = (
 				B1DCAC6C06C192FEF308483D /* UserApp */,
+				F383619246DAB820DA32FC10 /* Frameworks */,
 				C9E747316E6DE35262BA9968 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -139,6 +155,7 @@
 			isa = PBXGroup;
 			children = (
 				E4DFD2E6E74EE09DC168745D /* DesignSystem.swift */,
+				171A2B0A44CEA5CFE60932E7 /* MotionManager.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -170,6 +187,14 @@
 			path = Home;
 			sourceTree = "<group>";
 		};
+		F383619246DAB820DA32FC10 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				39E0D9C97D8E5268A6451B11 /* CoreMotion.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -179,6 +204,7 @@
 			buildPhases = (
 				E40B60FF5A0B8C76ED8D7AB0 /* Sources */,
 				C2014F3BC3C215160F6CF7FC /* Resources */,
+				42D83EC47B7C04A2979C6DF1 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -245,6 +271,7 @@
 				16C7E201A1C36F2CC31C68E2 /* LoginView.swift in Sources */,
 				9C2C3C340BBBD7960C3649AF /* MockData.swift in Sources */,
 				21057BACF480DF3F47099F22 /* Models.swift in Sources */,
+				8360FE843EB4963C47B0244C /* MotionManager.swift in Sources */,
 				B9686C397F4C1072B4828CA8 /* QRPayView.swift in Sources */,
 				BB40E69EF732909682042134 /* RegisterView.swift in Sources */,
 				A7CEE87645FD45659093FFAF /* RootView.swift in Sources */,

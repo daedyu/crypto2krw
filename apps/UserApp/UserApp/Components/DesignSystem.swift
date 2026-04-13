@@ -174,6 +174,10 @@ struct AppTextField: View {
 // MARK: - Number Formatters
 
 extension Double {
+    func clamped(to range: ClosedRange<Double>) -> Double {
+        min(max(self, range.lowerBound), range.upperBound)
+    }
+
     var krwFormatted: String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal

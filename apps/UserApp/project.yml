@@ -20,6 +20,8 @@ targets:
     deploymentTarget: "26.0"
     sources:
       - path: UserApp
+    dependencies:
+      - sdk: CoreMotion.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.crypto2krw.userapp
