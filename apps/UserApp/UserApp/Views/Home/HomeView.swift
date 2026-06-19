@@ -1,21 +1,86 @@
 import SwiftUI
 import CoreImage.CIFilterBuiltins
 
+// MARK: - Home ViewModel
+
+@Observable
+final class HomeViewModel {
+    var balances: [CoinBalance] = []
+    var transactions: [Transaction] = []
+    var isLoading = false
+    var errorMessage: String? = nil
+
+    @MainActor
+    func load() async {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        do {
+            async let b  = UserService.shared.getBalances()
+            async let w  = UserService.shared.getWallets()
+            async let r  = UserService.shared.getRates()
+            async let tx = UserService.shared.getTransactions(limit: 100)
+            let (bals, walls, rates, txItems) = try await (b, w, r, tx)
+            transactions = txItems.compactMap { $0.toTransaction() }
+            balances = Self.buildCoinBalances(balances: bals, wallets: walls, rates: rates)
+        } catch {
+            errorMessage = (error as? APIClientError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    private static func buildCoinBalances(
+        balances: [BalanceItem],
+        wallets: [WalletItem],
+        rates: RateMap
+    ) -> [CoinBalance] {
+        let rateMap: [Currency: Double] = [
+            .SOL:  Double(rates.sol)  ?? 0,
+            .ETH:  Double(rates.eth)  ?? 0,
+            .USDT: Double(rates.usdt) ?? 0,
+        ]
+        var amounts: [Currency: Double] = [:]
+        for item in balances {
+            guard let c = Currency(apiValue: item.currency) else { continue }
+            amounts[c, default: 0] += Double(item.availableBalance) ?? 0
+        }
+        var primaryWallet: [Currency: WalletItem] = [:]
+        for w in wallets.sorted(by: { $0.paymentPriority < $1.paymentPriority }) {
+            guard let c = Currency(apiValue: w.currency), primaryWallet[c] == nil else { continue }
+            primaryWallet[c] = w
+        }
+        return [Currency.USDT, .SOL, .ETH].compactMap { c in
+            guard let wallet = primaryWallet[c] else { return nil }
+            let amount = amounts[c] ?? 0
+            return CoinBalance(currency: c, amount: amount,
+                               krwValue: amount * (rateMap[c] ?? 0),
+                               address: wallet.address)
+        }
+    }
+}
+
 // MARK: - Home View
 
 struct HomeView: View {
     @State private var selectedIndex: Int? = nil
-    @State private var qrToken  = ""
-    @State private var timeLeft = 30
+    @State private var showDetail = false
+    @State private var qrToken   = ""
+    @State private var timeLeft  = 30
     @State private var dragOffset: CGFloat = 0
     @State private var motion = MotionManager()
+    @State private var vm = HomeViewModel()
 
-    private let balances    = MockData.balances
-    private let cardGap: CGFloat  = 100   // 카드 간격 (넉넉하게)
-    private let headerH: CGFloat  = 110   // 헤더 영역 높이
-    private let selectedY: CGFloat = 24   // 선택 시 카드 상단 위치
+    // 결제 감지
+    @State private var prevAmounts: [Currency: Double] = [:]
+    @State private var paymentDone   = false   // 결제 완료 오버레이
 
-    private var totalKrw: Double { balances.reduce(0) { $0 + $1.krwValue } }
+    private let cardGap: CGFloat   = 110
+    private let headerH: CGFloat   = 110
+    private let selectedY: CGFloat = 24
+    private let detailY:   CGFloat = 60
+    @State private var detailContentVisible = false
+
+    private var balances: [CoinBalance] { vm.balances }
+    private var totalKrw: Double { vm.balances.reduce(0) { $0 + $1.krwValue } }
 
     var body: some View {
         GeometryReader { geo in
@@ -40,55 +105,93 @@ struct HomeView: View {
 
                 // ── 카드 스택 ──
                 ForEach(Array(balances.enumerated()), id: \.element.id) { i, balance in
-                    WalletCard(balance: balance, width: cardW, height: cardH, isSelected: selectedIndex == i,
-                               roll: motion.roll, pitch: motion.pitch)
-                        .offset(x: 24, y: yOffset(i: i, cardH: cardH, totalH: geo.size.height) + (selectedIndex == i ? dragOffset : 0))
-                        .zIndex(selectedIndex == i ? 100 : Double(i))
-                        .onTapGesture {
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
-                                if selectedIndex == i {
-                                    selectedIndex = nil
+                    WalletCard(
+                        balance: balance, width: cardW, height: cardH,
+                        isSelected: selectedIndex == i,
+                        roll: motion.roll, pitch: motion.pitch
+                    )
+                    .offset(
+                        x: 24,
+                        y: yOffset(i: i, cardH: cardH, totalH: geo.size.height)
+                            + (selectedIndex == i && !showDetail ? dragOffset : 0)
+                    )
+                    .animation(
+                        .spring(response: 0.55, dampingFraction: 0.82),
+                        value: showDetail
+                    )
+                    .zIndex(selectedIndex == i ? 100 : Double(i))
+                    .opacity(showDetail && selectedIndex != i ? 0 : 1)
+                    .onTapGesture {
+                        if selectedIndex == i {
+                            if showDetail {
+                                withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) {
+                                    showDetail = false
+                                    detailContentVisible = false
+                                }
+                            } else {
+                                withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) {
+                                    showDetail = true
+                                    detailContentVisible = false
                                     dragOffset = 0
-                                } else {
-                                    selectedIndex = i
-                                    dragOffset = 0
-                                    refreshQR(i)
+                                }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                    withAnimation(.easeOut(duration: 0.22)) {
+                                        detailContentVisible = true
+                                    }
                                 }
                             }
+                        } else {
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
+                                selectedIndex = i
+                                showDetail = false
+                                dragOffset = 0
+                                paymentDone = false
+                                initPollSnapshot()
+                                refreshQR(i)
+                            }
                         }
+                    }
                 }
 
-                // ── QR 영역 (선택 시 표시) ──
-                if let idx = selectedIndex {
+                // ── QR 영역 ──
+                if let idx = selectedIndex, !showDetail {
                     VStack(spacing: 20) {
-                        // 카드 아래에 위치하도록 상단 여백
                         Color.clear.frame(height: selectedY + cardH + 24)
 
-                        // 잔액
                         VStack(spacing: 5) {
                             Text(balances[idx].krwValue.krwFormatted)
                                 .font(.system(size: 30, weight: .black, design: .rounded))
-                                .foregroundStyle(.primary)
                             Text("\(balances[idx].amount.coinFormatted) \(balances[idx].currency.rawValue)")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
 
-                        // QR 코드
-                        QRCodeImage(content: qrToken)
-                            .frame(width: 220, height: 220)
-                            .padding(16)
-                            .background(.background.secondary)
-                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        // QR 또는 결제완료 오버레이
+                        ZStack {
+                            QRCodeImage(content: qrToken)
+                                .frame(width: 220, height: 220)
+                                .opacity(paymentDone ? 0 : 1)
 
-                        // 타이머
-                        VStack(spacing: 6) {
-                            ProgressView(value: Double(timeLeft), total: 30.0)
-                                .tint(balances[idx].currency.accentColor)
-                                .frame(width: 200)
-                            Text("\(timeLeft)초 후 자동 갱신")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            if paymentDone {
+                                PaymentSuccessOverlay()
+                                    .frame(width: 220, height: 220)
+                                    .transition(.scale.combined(with: .opacity))
+                            }
+                        }
+                        .padding(16)
+                        .background(.background.secondary)
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: paymentDone)
+
+                        if !paymentDone {
+                            VStack(spacing: 6) {
+                                ProgressView(value: Double(timeLeft), total: 30.0)
+                                    .tint(balances[idx].currency.accentColor)
+                                    .frame(width: 200)
+                                Text("\(timeLeft)초 후 자동 갱신")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
 
                         Spacer()
@@ -98,19 +201,71 @@ struct HomeView: View {
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
                     .zIndex(50)
                 }
+
+                // ── 디테일 뷰 ──
+                if showDetail, detailContentVisible, let idx = selectedIndex {
+                    CardDetailView(
+                        balance: balances[idx],
+                        cardH: cardH,
+                        detailY: detailY,
+                        screenWidth: geo.size.width,
+                        transactions: vm.transactions.filter { $0.usedCurrency == balances[idx].currency }
+                    ) {
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
+                            showDetail = false
+                            detailContentVisible = false
+                        }
+                    }
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .zIndex(150)
+                }
             }
         }
-        .navigationTitle("")
+        .navigationTitle(showDetail ? (selectedIndex.map { balances[$0].currency.fullName } ?? "") : "")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear  { motion.start() }
+        // 뷰가 나타날 때마다 항상 최신 데이터 로드
+        .task { await vm.load() }
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                if showDetail {
+                    Button {
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
+                            showDetail = false
+                            detailContentVisible = false
+                            selectedIndex = nil
+                            dragOffset = 0
+                        }
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                            .font(.title3)
+                    }
+                    .transition(.opacity)
+                }
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: showDetail)
+        .onAppear   { motion.start() }
         .onDisappear { motion.stop() }
         .simultaneousGesture(
             DragGesture(minimumDistance: 10)
                 .onChanged { value in
-                    guard selectedIndex != nil, value.translation.height > 0 else { return }
+                    guard !showDetail, selectedIndex != nil,
+                          value.translation.height > 0 else { return }
                     dragOffset = value.translation.height
                 }
                 .onEnded { value in
+                    if showDetail {
+                        if value.translation.height > 80 {
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
+                                showDetail = false
+                                detailContentVisible = false
+                                selectedIndex = nil
+                                dragOffset = 0
+                            }
+                        }
+                        return
+                    }
                     guard selectedIndex != nil else { return }
                     if value.translation.height > 100 {
                         withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
@@ -124,34 +279,111 @@ struct HomeView: View {
                     }
                 }
         )
-        .onReceive(
-            Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-        ) { _ in
-            guard selectedIndex != nil else { return }
+        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
+            guard selectedIndex != nil, !showDetail else { return }
+
+            // QR 갱신 카운트다운
             if timeLeft <= 0 {
                 if let idx = selectedIndex { refreshQR(idx) }
             } else {
                 timeLeft -= 1
             }
+
+            // 1초마다 잔액 폴링 — 결제 완료 감지
+            Task { await detectPayment() }
         }
     }
 
-    // MARK: - Helpers
+    // MARK: - QR 갱신
+
+    private func refreshQR(_ idx: Int) {
+        let coin = balances[idx].currency.rawValue
+        let at   = TokenStore.accessToken ?? ""
+        qrToken  = at.isEmpty
+            ? "crypto2krw://pay?coin=\(coin)&ts=\(Int(Date().timeIntervalSince1970))"
+            : "crypto2krw://pay?coin=\(coin)&at=\(at)"
+        timeLeft = 30
+    }
+
+    // MARK: - 결제 감지
+
+    private func initPollSnapshot() {
+        for b in balances { prevAmounts[b.currency] = b.amount }
+    }
+
+    @MainActor
+    private func detectPayment() async {
+        guard let idx = selectedIndex, !showDetail, !paymentDone else { return }
+        let currency = balances[idx].currency
+        guard let prev = prevAmounts[currency] else { return }
+
+        guard let freshItems = try? await UserService.shared.getBalances() else { return }
+
+        var newAmount: Double? = nil
+        for item in freshItems {
+            guard let c = Currency(apiValue: item.currency), c == currency else { continue }
+            newAmount = (newAmount ?? 0) + (Double(item.availableBalance) ?? 0)
+        }
+
+        guard let fresh = newAmount else { return }
+
+        // 잔액 감소 = 결제 완료
+        if fresh < prev - 0.000001 {
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                paymentDone = true
+            }
+
+            // 전체 데이터 갱신
+            await vm.load()
+
+            // 3초 후 카드 닫기
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.78)) {
+                selectedIndex = nil
+                paymentDone   = false
+                dragOffset    = 0
+            }
+        } else {
+            prevAmounts[currency] = fresh
+        }
+    }
+
+    // MARK: - Layout
 
     private func yOffset(i: Int, cardH: CGFloat, totalH: CGFloat) -> CGFloat {
         if let selected = selectedIndex {
-            // 선택된 카드: 화면 상단으로
-            if i == selected { return selectedY }
-            // 나머지: 화면 아래로
-            return totalH + 80
+            if i == selected { return showDetail ? detailY : selectedY }
+            return totalH + 70
         }
-        // 기본: 헤더 아래에 카드 간격으로 배치
         return headerH + CGFloat(i) * cardGap
     }
+}
 
-    private func refreshQR(_ idx: Int) {
-        qrToken  = "crypto2krw://pay?coin=\(balances[idx].currency.rawValue)&ts=\(Int(Date().timeIntervalSince1970))"
-        timeLeft = 30
+// MARK: - 결제 완료 오버레이
+
+struct PaymentSuccessOverlay: View {
+    @State private var scale = 0.3
+    @State private var opacity = 0.0
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.green.opacity(0.15))
+
+            Image(systemName: "checkmark")
+                .font(.system(size: 72, weight: .semibold))
+                .foregroundStyle(.green)
+                .scaleEffect(scale)
+                .opacity(opacity)
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.55)) {
+                scale   = 1.0
+                opacity = 1.0
+            }
+        }
     }
 }
 
@@ -165,11 +397,10 @@ struct WalletCard: View {
     var roll:       Double = 0
     var pitch:      Double = 0
 
-    // 기울기 → 하이라이트 UnitPoint (중앙 기준, ±0.5 범위로 클램프)
     private var highlightCenter: UnitPoint {
-        let sensitivity = 0.45
-        let x = (0.25 - roll  * sensitivity).clamped(to: 0...1)
-        let y = (0.25 + pitch * sensitivity).clamped(to: 0...1)
+        let s = 0.45
+        let x = (0.25 - roll  * s).clamped(to: 0...1)
+        let y = (0.25 + pitch * s).clamped(to: 0...1)
         return UnitPoint(x: x, y: y)
     }
 
@@ -178,7 +409,6 @@ struct WalletCard: View {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(balance.currency.cardGradient)
 
-            // 기울기 반응 하이라이트
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(
                     RadialGradient(
@@ -190,7 +420,6 @@ struct WalletCard: View {
                 )
 
             VStack(alignment: .leading, spacing: 0) {
-                // 상단: 코인명 + 심볼
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(balance.currency.rawValue)
@@ -213,7 +442,6 @@ struct WalletCard: View {
 
                 Spacer()
 
-                // 하단: 원화 가치 + 수량
                 VStack(alignment: .leading, spacing: 4) {
                     Text(balance.krwValue.krwFormatted)
                         .font(.system(size: 28, weight: .black, design: .rounded))
@@ -241,7 +469,7 @@ struct WalletCard: View {
     }
 }
 
-// MARK: - QR Code (CoreImage 네이티브)
+// MARK: - QR Code
 
 struct QRCodeImage: View {
     let content: String

@@ -106,6 +106,19 @@ struct CoinDepositInfo: Identifiable {
     let networks: [DepositNetwork]
 }
 
+// MARK: - API Mapping
+
+extension Currency {
+    init?(apiValue: String) {
+        switch apiValue {
+        case "SOL":                          self = .SOL
+        case "ETH":                          self = .ETH
+        case "USDT", "USDT_ERC20", "USDT_TRC20": self = .USDT
+        default: return nil
+        }
+    }
+}
+
 struct DepositRecord: Identifiable {
     let id: String
     let txHash: String

@@ -1,0 +1,33 @@
+# 의존성
+node_modules/
+vendor/
+
+# 빌드 산출물
+dist/
+build/
+*.tsbuildinfo
+services/core/core
+services/oracle/oracle
+services/payment/payment
+services/chain/target/
+
+# 환경변수
+.env
+.env.local
+.env.*.local
+
+# 테스트 데이터
+services/core/test-ledger/
+services/core/test-setup
+
+# Xcode
+*.xcuserstate
+DerivedData/
+*.xccheckout
+*.moved-aside
+
+# OS
+.DS_Store
+
+# 로그
+*.log

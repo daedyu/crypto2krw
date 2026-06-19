@@ -22,7 +22,7 @@ struct MainTabView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            Tab("자산", systemImage: "wallet.pass", value: AppTab.home) {
+            Tab("결제", systemImage: "creditcard.fill", value: AppTab.home) {
                 NavigationStack { HomeView() }
             }
             Tab("내역", systemImage: "list.bullet.rectangle", value: AppTab.history) {

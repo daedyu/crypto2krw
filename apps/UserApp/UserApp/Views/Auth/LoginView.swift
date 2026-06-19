@@ -6,7 +6,7 @@ struct LoginView: View {
     @State private var password = ""
     @State private var showRegister = false
 
-    private var canLogin: Bool { !email.isEmpty && !password.isEmpty }
+    private var canLogin: Bool { !email.isEmpty && password.count >= 6 && !auth.isLoading }
 
     var body: some View {
         NavigationStack {
@@ -28,13 +28,28 @@ struct LoginView: View {
                         .padding(.bottom, 8)
                 }
 
+                if let errorMessage = auth.errorMessage {
+                    Section {
+                        Text(errorMessage)
+                            .foregroundStyle(.red)
+                            .font(.caption)
+                    }
+                }
+
                 Section {
-                    Button("로그인") {
-                        auth.login(email: email, password: password)
+                    Button {
+                        Task { await auth.login(email: email, password: password) }
+                    } label: {
+                        if auth.isLoading {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Text("로그인")
+                                .frame(maxWidth: .infinity)
+                        }
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(!canLogin)
-                    .frame(maxWidth: .infinity)
 
                     Button("계정이 없으신가요? 회원가입") {
                         showRegister = true

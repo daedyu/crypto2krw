@@ -2,16 +2,14 @@ import SwiftUI
 
 struct RegisterView: View {
     @Environment(AuthManager.self) private var auth
+    @Environment(\.dismiss) private var dismiss
+    @State private var email     = ""
+    @State private var password  = ""
+    @State private var confirm   = ""
 
-    @State private var email           = ""
-    @State private var password        = ""
-    @State private var passwordConfirm = ""
-
-    private var mismatch: Bool {
-        !passwordConfirm.isEmpty && password != passwordConfirm
-    }
-    private var canSubmit: Bool {
-        !email.isEmpty && !password.isEmpty && !passwordConfirm.isEmpty && !mismatch
+    private var passwordsMatch: Bool { password == confirm }
+    private var canRegister: Bool {
+        !email.isEmpty && password.count >= 8 && passwordsMatch && !auth.isLoading
     }
 
     var body: some View {
@@ -26,14 +24,8 @@ struct RegisterView: View {
                 SecureField("비밀번호 (8자 이상)", text: $password)
                     .textContentType(.newPassword)
 
-                SecureField("비밀번호 확인", text: $passwordConfirm)
+                SecureField("비밀번호 확인", text: $confirm)
                     .textContentType(.newPassword)
-
-                if mismatch {
-                    Text("비밀번호가 일치하지 않습니다")
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                }
             } header: {
                 Text("회원가입")
                     .font(.largeTitle).bold()
@@ -42,13 +34,34 @@ struct RegisterView: View {
                     .padding(.bottom, 8)
             }
 
+            if !confirm.isEmpty && !passwordsMatch {
+                Section {
+                    Text("비밀번호가 일치하지 않습니다.")
+                        .foregroundStyle(.red)
+                        .font(.caption)
+                }
+            }
+
+            if let errorMessage = auth.errorMessage {
+                Section {
+                    Text(errorMessage)
+                        .foregroundStyle(.red)
+                        .font(.caption)
+                }
+            }
+
             Section {
-                Button("가입하기") {
-                    auth.login(email: email, password: password)
+                Button {
+                    Task { await auth.register(email: email, password: password) }
+                } label: {
+                    if auth.isLoading {
+                        ProgressView().frame(maxWidth: .infinity)
+                    } else {
+                        Text("가입하기").frame(maxWidth: .infinity)
+                    }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(!canSubmit)
-                .frame(maxWidth: .infinity)
+                .disabled(!canRegister)
             }
 
             Section {
@@ -59,6 +72,9 @@ struct RegisterView: View {
         }
         .navigationTitle("회원가입")
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: auth.isLoggedIn) { _, isLoggedIn in
+            if isLoggedIn { dismiss() }
+        }
     }
 }
 
