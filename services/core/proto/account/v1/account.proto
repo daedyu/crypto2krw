@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+package account.v1;
+
+option go_package = "github.com/crypto2krw/core/gen/account/v1;accountv1";
+
+service AccountService {
+  // 채널계 Auth Service → 계정계: 유저 등록
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+
+  // 로그인 시 자격증명 검증
+  rpc ValidateUserCredentials(ValidateCredentialsRequest) returns (ValidateCredentialsResponse);
+
+  // Admin Service → 계정계: 유저 정지
+  rpc SuspendUser(SuspendUserRequest) returns (SuspendUserResponse);
+
+  // KYC 상태 업데이트
+  rpc UpdateKYCStatus(UpdateKYCStatusRequest) returns (UpdateKYCStatusResponse);
+
+  // ID로 유저 조회
+  rpc GetUserByID(GetUserByIDRequest) returns (GetUserByIDResponse);
+
+  // 가맹점 등록
+  rpc CreateMerchant(CreateMerchantRequest) returns (CreateMerchantResponse);
+
+  // 가맹점 자격증명 검증
+  rpc ValidateMerchantCredentials(ValidateCredentialsRequest) returns (ValidateMerchantCredentialsResponse);
+}
+
+message CreateUserRequest {
+  string email         = 1;
+  string password_hash = 2;  // 채널계에서 해싱 후 전달 (bcrypt)
+}
+
+message CreateUserResponse {
+  string user_id = 1;
+  string status  = 2;
+}
+
+message ValidateCredentialsRequest {
+  string email         = 1;
+  string password_hash = 2;
+}
+
+message ValidateCredentialsResponse {
+  bool   valid      = 1;
+  string entity_id  = 2;  // user_id
+  string status     = 3;
+  string kyc_status = 4;
+}
+
+message ValidateMerchantCredentialsResponse {
+  bool   valid        = 1;
+  string merchant_id  = 2;
+  string status       = 3;
+}
+
+message SuspendUserRequest {
+  string user_id = 1;
+  string reason  = 2;
+}
+
+message SuspendUserResponse {
+  bool success = 1;
+}
+
+message UpdateKYCStatusRequest {
+  string user_id    = 1;
+  string kyc_status = 2;  // "APPROVED" | "REJECTED"
+}
+
+message UpdateKYCStatusResponse {
+  bool success = 1;
+}
+
+message GetUserByIDRequest {
+  string user_id = 1;
+}
+
+message GetUserByIDResponse {
+  string user_id    = 1;
+  string email      = 2;
+  string status     = 3;
+  string kyc_status = 4;
+  string created_at = 5;
+}
+
+message CreateMerchantRequest {
+  string business_name = 1;
+  string email         = 2;
+  string password_hash = 3;
+}
+
+message CreateMerchantResponse {
+  string merchant_id = 1;
+}

@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package ledger.v1;
+
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/crypto2krw/core/gen/ledger/v1;ledgerv1";
+
+service LedgerService {
+  // 결제 차감 — 채널계 Payment Service가 동기 호출. <1s SLA.
+  rpc DebitForPayment(DebitForPaymentRequest) returns (DebitForPaymentResponse);
+
+  // 잔액 조회 — 결제 확인 화면 표시용
+  rpc GetUserBalances(GetUserBalancesRequest) returns (GetUserBalancesResponse);
+
+  // 잔액 잠금/해제 — Admin Service가 계정 동결 시 사용
+  rpc LockUserBalance(LockUserBalanceRequest) returns (google.protobuf.Empty);
+  rpc UnlockUserBalance(UnlockUserBalanceRequest) returns (google.protobuf.Empty);
+}
+
+message DebitForPaymentRequest {
+  string user_id      = 1;  // UUID string
+  string merchant_id  = 2;
+  string currency     = 3;  // "SOL" | "USDT_ERC20" | "USDT_TRC20" | "ETH"
+  string amount       = 4;  // Decimal string — float 절대 불가
+  string amount_krw   = 5;
+  string applied_rate = 6;
+  string payment_ref  = 7;  // qr_session_id — 멱등성 키
+}
+
+message DebitForPaymentResponse {
+  string status            = 1;  // "SUCCESS" | "INSUFFICIENT_FUNDS" | "ACCOUNT_SUSPENDED" | "ALREADY_PROCESSED"
+  string transaction_id    = 2;
+  string remaining_balance = 3;  // 차감 후 잔액 (Decimal string)
+}
+
+message GetUserBalancesRequest {
+  string user_id = 1;
+}
+
+message GetUserBalancesResponse {
+  repeated BalanceEntry entries = 1;
+}
+
+message BalanceEntry {
+  string currency          = 1;
+  string available_balance = 2;  // balance - locked_balance
+  string locked_balance    = 3;
+}
+
+message LockUserBalanceRequest {
+  string user_id  = 1;
+  string currency = 2;
+  string amount   = 3;
+  string reason   = 4;
+}
+
+message UnlockUserBalanceRequest {
+  string user_id  = 1;
+  string currency = 2;
+  string amount   = 3;
+}

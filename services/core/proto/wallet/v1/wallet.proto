@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package wallet.v1;
+
+option go_package = "github.com/crypto2krw/core/gen/wallet/v1;walletv1";
+
+service WalletService {
+  // 유저 등록 시 모든 통화의 입금 주소 생성
+  rpc AllocateDepositAddresses(AllocateDepositAddressesRequest) returns (AllocateDepositAddressesResponse);
+
+  // 유저 지갑 목록 조회 (입금 주소 화면)
+  rpc GetUserWallets(GetUserWalletsRequest) returns (GetUserWalletsResponse);
+
+  // 결제 우선순위 변경
+  rpc SetPaymentPriority(SetPaymentPriorityRequest) returns (SetPaymentPriorityResponse);
+
+  // chain-watcher가 감지한 주소를 유저 ID로 역조회
+  rpc ResolveAddressToUser(ResolveAddressRequest) returns (ResolveAddressResponse);
+}
+
+message AllocateDepositAddressesRequest {
+  string user_id = 1;
+}
+
+message AllocateDepositAddressesResponse {
+  repeated WalletEntry wallets = 1;
+}
+
+message WalletEntry {
+  string currency         = 1;
+  string address          = 2;
+  int32  payment_priority = 3;
+}
+
+message GetUserWalletsRequest {
+  string user_id = 1;
+}
+
+message GetUserWalletsResponse {
+  repeated WalletEntry wallets = 1;
+}
+
+message SetPaymentPriorityRequest {
+  string          user_id    = 1;
+  repeated string currencies = 2;  // 우선순위 순서대로: ["USDT_ERC20", "SOL", "ETH"]
+}
+
+message SetPaymentPriorityResponse {
+  bool success = 1;
+}
+
+message ResolveAddressRequest {
+  string address  = 1;
+  string currency = 2;
+}
+
+message ResolveAddressResponse {
+  string user_id = 1;  // 빈 문자열이면 미등록 주소
+  bool   found   = 2;
+}
