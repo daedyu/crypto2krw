@@ -1,0 +1,54 @@
+[package]
+name = "chain-watcher"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "chain-watcher"
+path = "src/main.rs"
+
+[dependencies]
+# 비동기 런타임
+tokio = { version = "1", features = ["full"] }
+
+# Kafka 프로듀서
+rdkafka = { version = "0.37", features = ["cmake-build"] }
+
+# Redis (멱등성 SET NX)
+redis = { version = "0.27", features = ["tokio-comp"] }
+
+# Solana RPC
+solana-client = "2.1"
+solana-sdk = "2.1"
+solana-transaction-status = "2.1"
+
+# Ethereum (ETH + USDT-ERC20)
+# TODO: alloy 추가 예정 (Ethereum watcher 구현 시)
+
+# Tron HTTP 폴링
+reqwest = { version = "0.12", features = ["json"] }
+
+# 직렬화
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# UUID
+uuid = { version = "1", features = ["v4"] }
+
+# 시간
+chrono = { version = "0.4", features = ["serde"] }
+
+# 환경변수
+dotenvy = "0.15"
+
+# 로깅
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# 오류 처리
+anyhow = "1"
+thiserror = "2"
+
+[profile.release]
+opt-level = 3
+lto = true

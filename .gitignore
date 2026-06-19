@@ -7,6 +7,7 @@ dist/
 build/
 *.tsbuildinfo
 services/core/core
+services/core/server
 services/oracle/oracle
 services/payment/payment
 services/chain/target/
